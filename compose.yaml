@@ -1,0 +1,39 @@
+name: docker-counter
+
+services:
+  app:
+    build: .
+    init: true
+    environment:
+      STORAGE: redis
+      REDIS_URL: redis://redis:6379/0
+      GREETING: "${GREETING:-Hello, Docker!}"
+    ports:
+      - "127.0.0.1:${HOST_PORT:-8080}:8000"
+    read_only: true
+    mem_limit: 256m
+    cpus: 1.0
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/readyz', timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 3s
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 3s
+
+volumes:
+  redis-data:
